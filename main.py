@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""小美的备考打卡工具 - 用爱打造的考试备考助手"""
+"""备考打卡工具 - 用爱打造的备考助手 💕"""
 
 import json
 import os
@@ -20,7 +20,13 @@ IMAGES_DIR = APP_DIR / "images"
 OLD_DATA_FILE = APP_DIR / "data.json"
 
 XIAOMI_API_KEY = os.getenv("AI_API_KEY", "")
-XIAOMI_BASE_URL = "https://api.xiaomimimo.com/v1/chat/completions"
+XIAOMI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.xiaomimimo.com/v1/chat/completions")
+AI_MODEL = os.getenv("AI_MODEL", "mimo-v2-flash")
+
+# 学生姓名（用于 AI prompt）
+STUDENT_NAME = os.getenv("STUDENT_NAME", "")
+# AI 鼓励 prompt，{name} 会被替换为 STUDENT_NAME
+AI_PROMPT = os.getenv("AI_PROMPT", "你是一个温柔体贴的人，给正在认真备考的{name}一句温暖的鼓励，20字以内，积极向上")
 
 # 登录密码（从环境变量读取，默认 123456）
 LOGIN_PASSWORD = os.getenv("LOGIN_PASSWORD", "123456")
@@ -59,21 +65,21 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 
 
 BACKUP_ENCOURAGEMENTS = [
-    "小美今天也很棒！备考的每一天都是为了更好的重逢 💕",
-    "你认真学习的样子真的很美，小明在远方陪着你 🌙",
-    "每一页书都是通向我们的未来的路，加油宝贝 ❤️",
-    "目标城市在等你，小明也在等你，你一定可以的！✨",
-    "今天的努力，是明天惊喜的铺垫，小美最厉害了！💪",
-    "备考虽远，但我们的心一直在一起，加油备考！🌸",
-    "熬过这段备考的日子，我们就能天天在一起了 🏠",
-    "小美的努力，小明都看在眼里，你是最棒的！🌟",
-    "你的努力终将开花结果，小明一直相信你 🌺",
-    "等到上岸那天，我们一起庆祝！🎂",
-    "你是我见过最努力最可爱的女孩，没有之一！👑",
-    "每一次打卡，都是我们爱情故事的一页 💌",
+    "今天也很棒！每一份努力都不会白费 💕",
+    "你认真学习的样子真好看 🌙",
+    "每一页书都是通向未来的路，加油 ❤️",
+    "目标在前方等着你，你一定可以的！✨",
+    "今天的努力，是明天惊喜的铺垫 💪",
+    "坚持就是胜利，你已经很棒了！🌸",
+    "熬过这段日子，美好就在前方 🏠",
+    "你的努力大家都看在眼里，你是最棒的！🌟",
+    "努力终将开花结果 🌺",
+    "等到上岸那天，一定要好好庆祝！🎂",
+    "你是最努力最优秀的人！👑",
+    "每一次打卡，都是进步的脚印 💌",
     "相信自己，你比想象中更强大！💖",
     "今天的你比昨天更优秀了一点点 ✨",
-    "认真备考的小美闪闪发光呢！⭐",
+    "认真备考的你闪闪发光呢！⭐",
 ]
 
 
@@ -205,7 +211,12 @@ def calc_stats() -> dict:
 
 
 def get_encouragement() -> str:
+    """尝试用 AI 生成鼓励语，失败则使用内置鼓励语"""
+    if not XIAOMI_API_KEY:
+        return random.choice(BACKUP_ENCOURAGEMENTS)
+
     try:
+        prompt = AI_PROMPT.replace("{name}", STUDENT_NAME) if STUDENT_NAME else AI_PROMPT.replace("{name}", "TA")
         response = requests.post(
             XIAOMI_BASE_URL,
             headers={
@@ -213,10 +224,10 @@ def get_encouragement() -> str:
                 "Content-Type": "application/json"
             },
             json={
-                "model": "mimo-v2-flash",
+                "model": AI_MODEL,
                 "messages": [
-                    {"role": "system", "content": "你是小美的男朋友小明，给正在备考目标城市考试的小美一句温暖的鼓励，要甜蜜、有爱，20字以内"},
-                    {"role": "user", "content": "小美刚打卡了，给她一句鼓励"}
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": "TA刚完成了今天的打卡，给一句鼓励"}
                 ],
                 "max_tokens": 100
             },

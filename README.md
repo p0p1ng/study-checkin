@@ -78,14 +78,54 @@ sudo systemctl enable --now xiaomei-checkin
 | `AI_PROMPT` | ❌ | 自定义 AI prompt，`{name}` 会替换为学生姓名 |
 | `APP_DIR` | ❌ | 应用目录，默认为脚本所在目录 |
 
-### 支持的 AI 服务
+### 🤖 配置 AI 鼓励语
 
-只要兼容 OpenAI API 格式的服务都可以，例如：
+打卡成功后会随机显示一句鼓励语。你也可以接入 AI 生成更个性化的鼓励。
 
-- [小米 MiMo](https://mimo.xiaomi.com/) — 速度快，中文好
-- [DeepSeek](https://platform.deepseek.com/) — 性价比高
-- [OpenAI](https://platform.openai.com/) — GPT 系列
-- [SiliconFlow](https://siliconflow.cn/) — 多模型聚合
+**第一步：选择 AI 服务**
+
+只要兼容 OpenAI API 格式的服务都可以：
+
+| 服务 | 获取 API Key | Base URL |
+|------|-------------|----------|
+| [小米 MiMo](https://mimo.xiaomi.com/) | 注册后获取 | `https://api.xiaomimimo.com/v1/chat/completions` |
+| [DeepSeek](https://platform.deepseek.com/) | 注册后获取 | `https://api.deepseek.com/v1/chat/completions` |
+| [SiliconFlow](https://siliconflow.cn/) | 注册后获取 | `https://api.siliconflow.cn/v1/chat/completions` |
+| [OpenAI](https://platform.openai.com/) | 注册后获取 | `https://api.openai.com/v1/chat/completions` |
+
+**第二步：配置 .env**
+
+```env
+# 学生姓名（替换 prompt 中的 {name}）
+STUDENT_NAME=小美
+
+# AI API 配置
+AI_API_KEY=sk-你的密钥
+AI_BASE_URL=https://api.deepseek.com/v1/chat/completions
+AI_MODEL=deepseek-chat
+```
+
+**第三步（可选）：自定义鼓励语 Prompt**
+
+默认 prompt 比较通用。如果你想定制风格，可以设置 `AI_PROMPT`：
+
+```env
+# 甜蜜情侣风
+AI_PROMPT=你是{name}的对象，给正在备考的{name}一句甜蜜温暖的鼓励，20字以内
+
+# 正经教练风
+AI_PROMPT=你是一个严格的备考教练，给正在学习的{name}一句简短有力的激励，15字以内
+
+# 搞笑朋友风  
+AI_PROMPT=你是{name}的好朋友，用轻松幽默的方式鼓励{name}继续备考，20字以内
+
+# 二次元风格
+AI_PROMPT=用可爱的二次元语气给{name}一句备考鼓励，加上颜文字，20字以内
+```
+
+> `{name}` 会被自动替换为 `STUDENT_NAME` 的值。不设置 `STUDENT_NAME` 则替换为 "TA"。
+
+不配置 `AI_API_KEY` 也没关系，系统会使用内置的 15 条鼓励语。
 
 ## 📁 项目结构
 
