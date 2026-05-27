@@ -22,7 +22,7 @@
 ### 1. 安装依赖
 
 ```bash
-pip install fastapi uvicorn requests Pillow python-dotenv
+pip install fastapi uvicorn requests Pillow python-dotenv PyJWT
 ```
 
 ### 2. 配置
@@ -43,13 +43,13 @@ STUDENT_NAME=你想要的名字
 
 ### 3. 修改密码
 
-编辑 `index.html`，找到这一行：
+编辑 `.env` 文件：
 
-```javascript
-const PASSWORD = '123456';  // ← 修改这里换成你的密码
+```env
+LOGIN_PASSWORD=你的新密码
 ```
 
-把 `123456` 换成你想要的密码。
+> 密码存在服务端，前端看不到，安全 🔒
 
 ### 4. 启动
 
@@ -70,6 +70,8 @@ sudo systemctl enable --now xiaomei-checkin
 | 环境变量 | 必填 | 说明 |
 |---------|------|------|
 | `STUDENT_NAME` | ✅ | 学生姓名，显示在页面和 AI 鼓励语中 |
+| `LOGIN_PASSWORD` | ✅ | 登录密码 |
+| `JWT_SECRET` | ❌ | JWT 签名密钥，不设置则每次重启后 token 失效 |
 | `AI_API_KEY` | ❌ | AI API 密钥，不配置则使用内置鼓励语 |
 | `AI_BASE_URL` | ❌ | AI API 地址，默认为小米 MiMo |
 | `AI_MODEL` | ❌ | AI 模型名，默认 `mimo-v2-flash` |
@@ -105,16 +107,20 @@ sudo systemctl enable --now xiaomei-checkin
 
 ## 🛠️ API 接口
 
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| `/` | GET | 首页 |
-| `/api/checkin` | POST | 打卡（支持 JSON 和 FormData） |
-| `/api/makeup` | POST | 补打卡 |
-| `/api/data` | GET | 获取所有记录和统计 |
-| `/api/records` | GET | 获取记录列表 |
-| `/api/stats` | GET | 获取统计数据 |
-| `/api/calendar/{yyyy-mm}` | GET | 获取指定月份日历 |
-| `/api/image/{path}` | GET | 获取图片 |
+所有 `/api/*` 接口需要 JWT 鉴权（`Authorization: Bearer <token>`），除以下接口外：
+
+| 接口 | 方法 | 鉴权 | 说明 |
+|------|------|------|------|
+| `/` | GET | ❌ | 首页 |
+| `/api/login` | POST | ❌ | 登录，返回 JWT token |
+| `/api/check` | GET | ✅ | 检查 token 是否有效 |
+| `/api/checkin` | POST | ✅ | 打卡（支持 JSON 和 FormData） |
+| `/api/makeup` | POST | ✅ | 补打卡 |
+| `/api/data` | GET | ✅ | 获取所有记录和统计 |
+| `/api/records` | GET | ✅ | 获取记录列表 |
+| `/api/stats` | GET | ✅ | 获取统计数据 |
+| `/api/calendar/{yyyy-mm}` | GET | ✅ | 获取指定月份日历 |
+| `/api/image/{path}` | GET | ❌ | 获取图片 |
 
 ## 💡 设计理念
 

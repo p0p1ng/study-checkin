@@ -1007,7 +1007,7 @@
             <span class="lock-emoji">🔐</span>
             <h2>欢迎来到备考打卡</h2>
             <p>输入密码继续哦 💕</p>
-            <input type="password" class="password-input" id="passwordInput" maxlength="6" placeholder="******">
+            <input type="password" class="password-input" id="passwordInput" maxlength="32" placeholder="输入密码">
             <button class="submit-btn" onclick="checkPassword()">进入打卡</button>
             <div class="error-msg" id="errorMsg"></div>
         </div>
@@ -1142,13 +1142,39 @@
 
     <script>
         const API_URL = '';
-        const PASSWORD = '123456';  // ← 修改这里换成你的密码
 
         let checkinData = {};
         let selectedImages = { zhice: null, jiaoji: null };
         let currentImageUrl = '';
         let makeupImage = null;
 
+        // ========== 认证 ==========
+        function saveToken(token) {
+            localStorage.setItem('checkin_jwt', token);
+        }
+        function getToken() {
+            return localStorage.getItem('checkin_jwt');
+        }
+        function clearToken() {
+            localStorage.removeItem('checkin_jwt');
+        }
+
+        // 带鉴权的 fetch，自动附带 token，401 时跳转登录
+        async function authFetch(url, options) {
+            options = options || {};
+            const token = getToken();
+            if (!options.headers) options.headers = {};
+            if (token) options.headers['Authorization'] = 'Bearer ' + token;
+            const res = await fetch(url, options);
+            if (res.status === 401) {
+                clearToken();
+                location.reload();
+                throw new Error('未登录');
+            }
+            return res;
+        }
+
+        // ========== 工具函数 ==========
         function createFloatingHearts() {
             const container = document.getElementById('floatingHearts');
             const hearts = ['💕', '💖', '💗', '💓', '💝', '🌸', '✨'];
@@ -1171,54 +1197,52 @@
             document.getElementById('dateDisplay').textContent = dateStr;
         }
 
-        function setToken(token) {
-            const data = { token, expires: Date.now() + 7 * 24 * 60 * 60 * 1000 };
-            localStorage.setItem('checkin_token', JSON.stringify(data));
-        }
-
-        function getToken() {
-            try {
-                const raw = localStorage.getItem('checkin_token');
-                if (!raw) return null;
-                const data = JSON.parse(raw);
-                if (Date.now() > data.expires) {
-                    localStorage.removeItem('checkin_token');
-                    return null;
-                }
-                return data.token;
-            } catch (e) {
-                return null;
-            }
-        }
-
         function doLogin() {
             document.getElementById('passwordModal').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             init();
         }
 
-        function checkPassword() {
+        async function checkPassword() {
             const input = document.getElementById('passwordInput').value;
-            if (input === PASSWORD) {
-                setToken(PASSWORD);
-                doLogin();
-            } else {
-                document.getElementById('errorMsg').textContent = '密码不对哦，再试一次 💕';
+            if (!input) return;
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: input })
+                });
+                const data = await res.json();
+                if (data.status === 'ok' && data.token) {
+                    saveToken(data.token);
+                    doLogin();
+                } else {
+                    document.getElementById('errorMsg').textContent = data.message || '密码不对哦，再试一次 💕';
+                }
+            } catch (e) {
+                document.getElementById('errorMsg').textContent = '网络出错了，请重试';
             }
         }
 
-        function tryAutoLogin() {
-            if (getToken() === PASSWORD) {
-                doLogin();
+        async function tryAutoLogin() {
+            const token = getToken();
+            if (!token) return;
+            try {
+                const res = await fetch('/api/check', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    doLogin();
+                } else {
+                    clearToken();
+                }
+            } catch (e) {
+                // 网络问题，不自动登录
             }
         }
 
         document.getElementById('passwordInput').addEventListener('input', function() {
-            if (this.value.length === 6) {
-                checkPassword();
-            } else {
-                document.getElementById('errorMsg').textContent = '';
-            }
+            document.getElementById('errorMsg').textContent = '';
         });
 
         document.getElementById('passwordInput').addEventListener('keypress', function(e) {
@@ -1237,7 +1261,7 @@
 
         async function loadData() {
             try {
-                const res = await fetch('/api/data');
+                const res = await authFetch('/api/data');
                 checkinData = await res.json();
             } catch (e) {
                 checkinData = { records: [], stats: {} };
@@ -1595,7 +1619,7 @@
                 formData.append('image', makeupImage);
 
                 try {
-                    const res = await fetch('/api/makeup', {
+                    const res = await authFetch('/api/makeup', {
                         method: 'POST',
                         body: formData
                     });
@@ -1617,7 +1641,7 @@
             } else {
                 // 没有图片，使用JSON
                 try {
-                    const res = await fetch('/api/makeup', {
+                    const res = await authFetch('/api/makeup', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ date: makeupDate, subjects: makeupSubjects, content })
@@ -1815,7 +1839,7 @@
             if (!currentImageUrl) return;
             const link = document.createElement('a');
             link.href = currentImageUrl;
-            link.download = 'checkin-' + new Date().toISOString().slice(0, 10) + '.jpg';
+            link.download = 'xiaomei-checkin-' + new Date().toISOString().slice(0, 10) + '.jpg';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1835,7 +1859,7 @@
                 formData.append('image', imageFile);
 
                 try {
-                    const res = await fetch('/api/checkin', {
+                    const res = await authFetch('/api/checkin', {
                         method: 'POST',
                         body: formData
                     });
@@ -1861,7 +1885,7 @@
             } else {
                 // 没有图片，使用JSON
                 try {
-                    const res = await fetch('/api/checkin', {
+                    const res = await authFetch('/api/checkin', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ subject, content })
